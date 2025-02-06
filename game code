@@ -1,0 +1,215 @@
+import time
+from turtle import right, width
+import pygame
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 197)
+VIOLET = (218, 177, 218)
+ORANGE = (247, 217, 188)
+
+level_colors = [WHITE, YELLOW, VIOLET, ORANGE]
+
+# Initialize screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Collect the Words!")
+
+# Clock for controlling frame rate
+clock = pygame.time.Clock()
+FPS = 60
+
+# Fonts
+font = pygame.font.Font(None, 74)
+small_font = pygame.font.Font(None, 36)
+
+tips = [
+    "Avoid the enemy to survive!",
+    "Collect letters to complete the word.",
+    "Each level gets harder!",
+    "Use WASD keys to move.",
+    "Speed increases every level!",
+    "Plan your moves carefully!",
+    "Go fuck your self",
+    "K B P"
+]
+
+# Player setup
+player_size = 50
+player = pygame.Rect(WIDTH // 2, HEIGHT // 2, player_size, player_size)
+player_speed = 5
+
+# Collectible setup
+collectible_size = 30
+words = ["PYTHON", "GAME", "FUN", "CODE", "LEVEL", "DEBUG", "OBJECT", "CLASS", "METHOD", "STRING", "LOOP", "ARRAY", "IMPORT", "MODULE", "SPRITE", "ALGORITHM", "VARIABLE", "FUNCTION", "INHERITANCE", "ENCAPSULATION", "POLYMORPHISM", "COMPILE", "EXECUTION", "ASYNC", "DECORATOR"]
+current_word = random.choice(words)
+word_index = 0
+collectible = pygame.Rect(random.randint(0, WIDTH - collectible_size), random.randint(0, HEIGHT - collectible_size), collectible_size, collectible_size)
+
+# Enemy setup
+enemy_size = 50
+enemies = [
+    pygame.Rect(random.randint(0, WIDTH - enemy_size), random.randint(0, HEIGHT - enemy_size), enemy_size, enemy_size)
+]
+enemy_speed = 3
+
+def move_enemies():
+    for enemy in enemies:
+        if player.x > enemy.x:
+            enemy.x += enemy_speed
+        elif player.x < enemy.x:
+            enemy.x -= enemy_speed
+        if player.y > enemy.y:
+            enemy.y += enemy_speed
+        elif player.y < enemy.y:
+            enemy.y -= enemy_speed
+
+
+def ensure_no_overlap():
+    for i, enemy_a in enumerate(enemies):
+        for j, enemy_b in enumerate(enemies):
+            if i != j and enemy_a.colliderect(enemy_b):
+                enemy_b.x = random.randint(0, WIDTH - enemy_size)
+                enemy_b.y = random.randint(0, HEIGHT - enemy_size)
+
+# Score tracking
+score = 0
+level = 1
+
+# Draw text function
+def draw_text(text, font, color, x, y):
+    text_surface = font.render(text, True, color)
+    screen.blit(text_surface, (x, y))
+
+def game_over_screen():
+    screen.fill(WHITE)
+    draw_text("Game Over", font, RED, WIDTH // 2 - 150, HEIGHT // 2 - 50)
+    draw_text(f"Score: {score}", small_font, BLACK, WIDTH // 2 - 50, HEIGHT // 2 + 20)
+    draw_text("Press R to Restart or Q to Quit", small_font, BLACK, WIDTH // 2 - 200, HEIGHT // 2 + 80)
+    pygame.display.flip()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    return True
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    exit()
+
+def start_screen():
+    screen.fill(WHITE)
+    draw_text("Collect the Words!", font, BLUE, WIDTH // 2 - 200, HEIGHT // 2 - 100)
+    draw_text("This game is make for who can spell the letters", small_font, RED, WIDTH // 2 - 250, HEIGHT // 2 + 60)
+    draw_text("But can read ENG ", small_font, RED, WIDTH // 2 - 100, HEIGHT // 2 + 100)
+    draw_text("Press SPACE to Start", small_font, BLACK, WIDTH // 2 - 110, HEIGHT // 2 + 20)
+    pygame.display.flip()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return
+
+def next_level():
+    global level, enemy_speed, current_word, word_index, collectible, enemies
+    level += 1
+    enemy_speed += 1
+    current_word = random.choice(words)
+    word_index = 0
+    collectible = pygame.Rect(random.randint(0, WIDTH - collectible_size), random.randint(0, HEIGHT - collectible_size), collectible_size, collectible_size)
+
+# Start game
+start_screen()
+
+# Game loop
+running = True
+current_tip = random.choice(tips)
+tip_timer = 300  # Show each tip for 6 seconds (60 FPS)
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Player movement
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_a] and player.left > 0:
+        player.x -= player_speed
+    if keys[pygame.K_d] and player.right < WIDTH:
+        player.x += player_speed
+    if keys[pygame.K_w] and player.top > 0:
+        player.y -= player_speed
+    if keys[pygame.K_s] and player.bottom < HEIGHT:
+        player.y += player_speed
+
+    # Move enemies
+    move_enemies()
+    ensure_no_overlap()
+
+    # Check collision with collectible
+    if player.colliderect(collectible):
+        if word_index < len(current_word) - 1:
+            word_index += 1
+        else:
+            score += len(current_word)
+            next_level()
+        collectible = pygame.Rect(random.randint(0, WIDTH - collectible_size), random.randint(0, HEIGHT - collectible_size), collectible_size, collectible_size)
+
+    # Check collision with enemies
+    for enemy in enemies:
+        if player.colliderect(enemy):
+            if game_over_screen():
+                # Reset the game
+                player = pygame.Rect(WIDTH // 2, HEIGHT // 2, player_size, player_size)
+                enemies = [
+                    pygame.Rect(random.randint(0, WIDTH - enemy_size), random.randint(0, HEIGHT - enemy_size), enemy_size, enemy_size)
+                ]
+                collectible = pygame.Rect(random.randint(0, WIDTH - collectible_size), random.randint(0, HEIGHT - collectible_size), collectible_size, collectible_size)
+                score = 0
+                level = 1
+                enemy_speed = 0
+                current_word = random.choice(words)
+                word_index = 0
+            else:
+                running = False
+
+    # Update tips
+    tip_timer -= 1
+    if tip_timer <= 0:
+        current_tip = random.choice(tips)
+        tip_timer = 300
+
+    # Drawing
+    screen.fill(level_colors[level % len(level_colors)])
+    pygame.draw.rect(screen, BLUE, player)
+    pygame.draw.rect(screen, GREEN, collectible)
+    for enemy in enemies:
+        pygame.draw.rect(screen, RED, enemy)
+    draw_text(current_word[:word_index + 1], font, BLACK, collectible.x + 5, collectible.y + 5)
+    draw_text(f"Score: {score}", small_font, BLACK, 10, 10)
+    draw_text(f"Level: {level}", small_font, BLACK, 10, 40)
+    draw_text(f"Tip: {current_tip}", small_font, RED, 10, HEIGHT - 40)
+
+    # Update display
+    pygame.display.flip()
+
+    # Cap the frame rate
+    clock.tick(FPS)
+
+pygame.quit()
